@@ -21,6 +21,8 @@ Here I try to avoid that `extra step` and do a push/save directly to the s3 buck
 > sudo cp ./s3upload /usr/bin/s3upload # change permissions,ownership if neceserry
 ```
 ### Configuration
+NOTE: for security and usability cli environment variables are ignored    
+
 **~/.aws/config** file structure
 ```bash
 [default]
@@ -33,21 +35,15 @@ region = <s3_bucket_region>
 aws_access_key_id = XXX
 aws_secret_access_key = XXX
 ```
-
-**Alternative** (might be a bad idea if bash history is not sanitized )
-```bash
-> export AWS_REGION=<s3_bucket_region>
-> export AWS_ACCESS_KEY_ID=XXX
-> export AWS_SECRET_ACCESS_KEY=XXX
-```
-
 ### Usage
 
 If credentials are valid and `s3upload` is already in your working path all you have to do is **PIPE** the content to it and it will save it inside your s3 bucket 
 
 ```bash
+s3upload -h # usage explanation
+
 # simple test
-> date -R | s3upload my_s3_bucket date
+> date -R | s3upload -u my_s3_bucket date
 # would result in the following output
 SUCCESS: https://s3.<bucket_region>.amazonaws.com/my_s3_bucket/YYYY/MM/DD/date_HH_MM_SS
 
@@ -55,9 +51,13 @@ SUCCESS: https://s3.<bucket_region>.amazonaws.com/my_s3_bucket/YYYY/MM/DD/date_H
 > pg_basebackup -h mydbserver -D /usr/local/pgsql/data
 
 # would be rewritten as
-> pg_basebackup -h mydbserver -D - | s3upload my_s3_bucket mydbserver
+> pg_basebackup -h mydbserver -D - | s3upload -u my_s3_bucket mydbserver
 
 # OR backup and compress
-> pg_dump -h localhost -U postgres -a -t table database | bzip2 | s3upload my_s3_bucket tabledata.bz2
+> pg_dump -h localhost -U postgres -a -t table database | bzip2 | s3upload -u my_s3_bucket tabledata.bz2
+
+# download object from s3 bucket
+> s3upload -d <bucket> <object_key> <file_path> 
+# Object Key would be everything after my_s3_bucket without forward slash see first example for reference
 ```
 With that I think the use-case is clear and powerful.
