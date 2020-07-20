@@ -59,5 +59,8 @@ SUCCESS: https://s3.<bucket_region>.amazonaws.com/my_s3_bucket/YYYY/MM/DD/date_H
 # download object from s3 bucket
 > s3upload -d <bucket> <object_key> <file_path> 
 # Object Key would be everything after my_s3_bucket without forward slash see first example for reference
+
+# dump object from s3 bucket to stdout and decompress
+> s3upload -d <bucket> <object_key> | bzip2 -d
 ```
 With that I think the use-case is clear and powerful.

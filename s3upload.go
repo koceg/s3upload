@@ -18,6 +18,15 @@ const (
 	mb = 1024 * 1024
 )
 
+type WriteAtBuffer struct {
+	out io.Writer
+}
+
+func (b *WriteAtBuffer) WriteAt(p []byte, _ int64) (n int, err error) {
+	n, err = b.out.Write(p)
+	return n, err
+}
+
 var (
 	awsProfile string
 	up, down   bool
@@ -63,10 +72,8 @@ func main() {
 			upload(sess, in)
 		}
 		if down {
-			flag.CommandLine.Usage()
-			os.Exit(1)
-			//out := bufio.NewWriterSize(os.Stdout, part*mb)
-			//download(sess, os.Stdout)
+			out := &WriteAtBuffer{os.Stdout}
+			download(sess, out)
 		}
 	} else {
 		if up {
@@ -124,11 +131,6 @@ func upload(s *session.Session, in io.Reader) {
 }
 
 func download(s *session.Session, w io.WriterAt) {
-	// https://gist.github.com/jboelter/ecfb08d6a18440ac16d93b5183aad207
-	// is the solution how to do it
-	// buff := &aws.WriteAtBuffer{}
-	// and then we io.COPY to stout
-	// need a way to be transparent
 
 	file := s3manager.NewDownloader(s)
 	file.PartSize = int64(part * mb)
