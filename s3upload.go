@@ -28,13 +28,14 @@ func (b *WriteAtBuffer) WriteAt(p []byte, _ int64) (n int, err error) {
 }
 
 var (
-	awsProfile string
-	up, down   bool
-	part       int
+	awsProfile, zone string
+	up, down         bool
+	part             int
 )
 
 func init() {
 	flag.StringVar(&awsProfile, "p", "default", "aws profile used for the session")
+	flag.StringVar(&zone, "z", "", "aws zone uses one in profile if not given")
 	flag.IntVar(&part, "c", 10, "set concurency")
 	flag.BoolVar(&up, "u", false, "upload file to s3 bucket")
 	flag.BoolVar(&down, "d", false, "download object from s3 bucket")
@@ -46,7 +47,7 @@ func setupFlags(f *flag.FlagSet) {
 		fmt.Printf(
 			"\nExample: cat file | %s -u <bucket> <object_prefix> # read from stdin\n"+
 				"Example: %s -d <bucket> <object_key> <file_path>\n\n"+
-				"%s (-c) (-p) -d/-u <bucket> <key> (file_path)\n",
+				"%s (-c,-p,-z) -d/-u <bucket> <key> (file_path)\n",
 			os.Args[0], os.Args[0], os.Args[0])
 		flag.PrintDefaults()
 	}
@@ -54,14 +55,9 @@ func setupFlags(f *flag.FlagSet) {
 
 func main() {
 	flag.Parse()
-	sess, err := session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-		Profile:           awsProfile,
-	})
-	if err != nil {
-		awsError(err)
-	}
-	if up && down {
+	sess := newSession(awsProfile, zone)
+
+	if (up && down) || len(flag.Args()) == 0 {
 		flag.CommandLine.Usage()
 		os.Exit(1)
 	}
@@ -95,6 +91,29 @@ func main() {
 	}
 }
 
+func newSession(profile, zone string) *session.Session {
+	var sess *session.Session
+	var err error
+	if zone != "" {
+		sess, err = session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+			Profile:           profile,
+			Config: aws.Config{
+				Region: aws.String(zone),
+			},
+		})
+	} else {
+		sess, err = session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+			Profile:           profile,
+		})
+	}
+	if err != nil {
+		awsError(err)
+	}
+	return sess
+}
+
 func awsError(err error) {
 	if awsErr, ok := err.(awserr.Error); ok {
 		fmt.Fprintf(os.Stderr, "Error: %s %s\n", awsErr.Code(), awsErr.Message())
@@ -103,7 +122,7 @@ func awsError(err error) {
 				reqErr.RequestID())
 		}
 	} else {
-		fmt.Println(err.Error())
+		fmt.Println(err)
 	}
 	os.Exit(1)
 }
